@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Display</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+
+    <div class="container">
+        <h1><i class="fas fa-temperature-high icon"></i> Temperature and Humidity Data</h1>
+        
+        <h3>Data Table</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Index</th>
+                    <th>Temperature</th>
+                    <th>Humidity</th>
+                    <th>Brightness</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody id="data-table-body">
+                <!-- Dynamic rows will be inserted here -->
+            </tbody>
+        </table>
+
+         <!-- Data Display Section -->
+         <div class="data-section">
+            <div class="row">
+                <div class="col-half">
+                    <h3>Summary</h3>
+                    <ul class="list-group">
+                        <li class="list-group-item"><i class="fas fa-temperature-high icon"></i> Max Temperature: <span id="max-suhu" class="loading">Loading...</span>°C</li>
+                        <li class="list-group-item"><i class="fas fa-temperature-low icon"></i> Min Temperature: <span id="min-suhu" class="loading">Loading...</span>°C</li>
+                        <li class="list-group-item"><i class="fas fa-chart-line icon"></i> Average Temperature: <span id="avg-suhu" class="loading">Loading...</span>°C</li>
+                    </ul>
+                </div>
+                <div class="col-half">
+                    <h3>Month and Year Max</h3>
+                    <ul class="list-group" id="month-year-list">
+                        <!-- Dynamic list will be populated here -->
+                    </ul>
+                </div>
+            </div>
+
+        <!-- Input Form Section with Sliders -->
+        <div class="form-section">
+            <h2><i class="fas fa-plus-circle icon"></i> Submit New Data</h2>
+            <form id="dataForm">
+                <div class="form-group">
+                    <label for="temperature">Temperature (°C): <span id="tempValue">30</span></label>
+                    <input type="range" id="temperature" name="temperature" min="21" max="36" value="30" oninput="updateValue('tempValue', this.value)">
+                </div>
+    
+                <div class="form-group">
+                    <label for="humidity">Humidity (%): <span id="humidityValue">50</span></label>
+                    <input type="range" id="humidity" name="humidity" min="0" max="100" value="50" oninput="updateValue('humidityValue', this.value)">
+                </div>
+    
+                <div class="form-group">
+                    <label for="brightness">Brightness: <span id="brightnessValue">500</span></label>
+                    <input type="range" id="brightness" name="brightness" min="0" max="1000" value="500" oninput="updateValue('brightnessValue', this.value)">
+                </div>
+    
+                <button type="button" class="submit-btn" onclick="submitData()">Submit Data</button>
+            </form>
+        </div>
+
+            <!-- JSON Display Section -->
+            <h3><i class="fas fa-code icon"></i> Raw JSON Data</h3>
+            <pre id="json-display">Loading JSON data...</pre>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Update displayed value for sliders
+        function updateValue(id, value) {
+            document.getElementById(id).textContent = value;
+        }
+    
+        // Submit data with a timestamp
+        function submitData() {
+            const data = {
+                temperature: document.getElementById('temperature').value,
+                humidity: document.getElementById('humidity').value,
+                brightness: document.getElementById('brightness').value,
+                timestamp: new Date().toISOString() // Adds current timestamp
+            };
+
+            console.log("Submitting data:", data); // Debug log
+
+            $.ajax({
+                url: '/api/data',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(response) {
+                    alert("Data submitted successfully!");
+                    location.reload();
+                },
+                error: function(jqXHR) {
+                    alert("Error submitting data: " + jqXHR.responseText);
+                }
+            });
+        }
+
+        // Load existing data
+        $(document).ready(function() {
+            $.get('/api/data', function(data) {
+                const formattedJSON = JSON.stringify(data, null, 4);
+                $('#json-display').text(formattedJSON);
+
+                $('#max-suhu').text(data.suhumax);
+                $('#min-suhu').text(data.suhumin);
+                $('#avg-suhu').text(data.suhurata);
+    
+                let monthYearList = data.month_year_max.map(function(item) {
+                    return `<li class="list-group-item">${item.month_year}</li>`;
+                }).join('');
+                $('#month-year-list').html(monthYearList);
+    
+                let tableRows = data.nilai_suhu_max_humid_max.map(function(item) {
+                    return `<tr>
+                                <td>${item.idx}</td>
+                                <td>${item.suhun}°C</td>
+                                <td>${item.humid}%</td>
+                                <td>${item.kecerahan}</td>
+                                <td>${item.timestamp}</td>
+                            </tr>`;
+                }).join('');
+                $('#data-table-body').html(tableRows);
+            }).fail(function() {
+                alert("Error loading data.");
+                $('#json-display').text("Error loading JSON data.");
+            });
+        });
+    </script>
+
+
+<style>
+    body {
+        font-family: 'Poppins', sans-serif;
+        background-color: #f4f7fc;
+        color: #2e3a59;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+    }
+
+    h1, h2, h3 {
+        text-align: center;
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 15px;
+    }
+
+    .container {
+        max-width: 1200px;
+        width: 100%;
+        background-color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+        box-sizing: border-box;
+    }
+
+    .form-section, .data-section {
+        padding: 30px;
+        border-radius: 10px;
+        background: #fff;
+        margin-bottom: 30px;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    .form-group input[type="range"] {
+        width: 100%;
+        accent-color: #6c5ce7;
+    }
+
+    .submit-btn {
+        background-color: #6c5ce7;
+        color: #fff;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    .submit-btn:hover {
+        background-color: #4e37d1;
+    }
+
+    .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        align-items: start;
+    }
+
+    .col-half {
+        padding: 20px;
+        border-radius: 10px;
+        background-color: #f7f9fc;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .list-group {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .list-group-item {
+        background-color: #f0f2f5;
+        padding: 12px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        font-size: 1rem;
+        color: #555;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+
+    table th, table td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 1px solid #e0e4e8;
+        font-size: 1rem;
+        color: #555;
+    }
+
+    table th {
+        background-color: #6c5ce7;
+        color: #fff;
+        font-weight: 600;
+        border: none;
+    }
+
+    table tbody tr:hover {
+        background-color: #f1f1f1;
+        transition: background-color 0.2s ease;
+    }
+
+    .loading {
+        color: #888;
+    }
+
+    pre {
+        background-color: #f9f9fb;
+        padding: 15px;
+        border-radius: 8px;
+        overflow-x: auto;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        font-size: 0.9rem;
+    }
+
+    .icon {
+        font-size: 1.5rem;
+        margin-right: 10px;
+    }
+</style>
+</body>
+</html>
